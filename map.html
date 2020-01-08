@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>Map</title>
+    <style>
+        #app {
+            text-align: center;
+        }
+
+        td {
+            width: 40px;
+            height: 40px;
+        }
+
+        td:hover {
+            background: #f00;
+            cursor: pointer;
+        }
+
+        .color_0 {
+            background: #f00;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="container">
+        <div class="row">
+            <div class="col-10">
+                <table border="1">
+                    <tbody>
+                    <tr v-for="row in viewBattleground">
+                        <td v-for="(value, key, index) in row"
+                            v-bind:class="'color_'+value.type"
+                            v-bind:id="value.id"
+                            v-on:click.left="select(value.id)"
+                            v-on:dblclick.left="move(value.id)"
+                        ><img v-bind:src="value.value" height="40px" width="40px"/></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-2">
+                Select ID: {{ selectId }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/pathFinding.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script src="levels.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            settings: {
+                viewSize: {x_axis: 19, y_axis: 14},
+            },
+            types: {SELECT: 0, PASSABLE: 1, ROCK: 2, MONSTER: 3, TREASURE: 4, PLAYER: 5},
+            viewBattleground: [],
+            battlegroundInitialized: false,
+            map: level1,
+            selectId: 0,
+            playerPositionId: 0
+        },
+        created: function () {
+            this.map[0]['type'] = this.types.PLAYER;
+            this.map[0]['value'] = 'knight.png';
+            this.settings.viewSize.y_axis = this.map['height'] - 1;
+            this.settings.viewSize.x_axis = this.map['width'] - 1;
+            this.calcBattleground();
+        },
+        methods: {
+            calcBattleground: function () {
+                // this.viewBattleground = [];
+                let id = 0;
+                for (let y = 0; y <= this.settings.viewSize.y_axis; y++) {
+                    let columns = new Array(this.settings.viewSize.x_axis);
+                    if(!this.battlegroundInitialized) {
+                        this.viewBattleground.push(columns);
+                    }
+                    for (let x = 0; x <= this.settings.viewSize.x_axis; x++) {
+                        let cell = this.map[id];
+                        let type = id === this.selectId ? this.types.SELECT : cell['type'];
+                        let value = cell['value'];
+
+                        this.viewBattleground[y][x] = {'id': id, 'type': type, 'value': value};
+                        id++;
+                    }
+                }
+                this.battlegroundInitialized = true;
+            },
+            select: function (id) {
+                this.selectId = id;
+                this.calcBattleground();
+            },
+            move: function (id) {
+                if (this.map[id].type === this.types.PASSABLE && this.checkPath(id)) {
+                    this.map[this.playerPositionId]['type'] = this.types.PASSABLE;
+                    this.map[this.playerPositionId]['value'] = 'ground.png';
+                    this.playerPositionId = id;
+                    this.map[id]['type'] = this.types.PLAYER;
+                    this.map[id]['value'] = 'knight.png';
+                    this.calcBattleground();
+                }
+            },
+            checkPath: function (id) {
+                let player = this.map[this.playerPositionId];
+                console.log('Player x:' + player['x'] + ' y:' + player['y']);
+                let target = this.map[id];
+                console.log('Target x:' + target['x'] + ' y:' + target['y']);
+
+                let matrix = [];
+                for (var y = 0; y < this.map['height']; y++) {
+                    let columns = new Array(this.map['width']);
+                    matrix.push(columns);
+                    for (var x = 0; x < this.map['width']; x++) {
+                        let type = this.viewBattleground[y][x].type;
+                        if (type === this.types.PASSABLE || type === this.types.PLAYER || type === this.types.SELECT) {
+                            matrix[y][x] = 0;
+                        } else {
+                            matrix[y][x] = 1;
+                        }
+                    }
+                }
+
+                var finder = new AStarFinder(matrix);
+                var path = finder.findPath(player['x'], player['y'], target['x'], target['y']);
+                console.log(path);
+
+                for (var i = 0; i < path.length; i++) {
+                    x = path[i][0];
+                    y = path[i][1];
+                    this.viewBattleground[y][x].type = this.types.SELECT;
+                }
+
+                return path.length > 0;
+            }
+        }
+    });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <title>Map Generator</title>
+    <style>
+        #app {
+            text-align: center;
+        }
+
+        td {
+            width: 40px;
+            height: 40px;
+        }
+
+        td:hover {
+            background: #f00;
+            cursor: pointer;
+        }
+
+        .color_0 {
+            background: #f00;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="container">
+        <div class="row">
+            <div class="col-10">
+                <table border="1">
+                    <tbody>
+                    <tr v-for="row in viewBattleground">
+                        <td v-for="(value, key, index) in row"
+                            v-bind:class="'color_'+value.type"
+                            v-bind:id="value.id"
+                            v-on:click.left="select(value.id)"
+                            v-on:click.right.prevent="addRock(value.id)"
+                        ><img v-bind:src="value.value" height="40px" width="40px"/></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-2">
+                Current ID: {{ currentId }}
+                <button v-on:click="addMonster()">Monster</button>
+                <button v-on:click="addTreasure()">Treasure</button>
+            </div>
+        </div>
+    </div>
+
+    <button v-on:click="save()">Save</button>
+    <button v-on:click="clear()">Clear</button>
+    <button v-on:click="copyToClipboard()">Copy</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            settings: {
+                viewSize: {x_axis: 4, y_axis: 4},
+            },
+            types: {SELECT: 0, PASSABLE: 1, ROCK: 2, MONSTER: 3, TREASURE: 4, PLAYER: 5},
+            viewBattleground: [],
+            map: {},
+            currentId: 0,
+        },
+        created: function () {
+            let storeMap = localStorage.getItem('map');
+            if (storeMap) {
+                this.map = JSON.parse(storeMap);
+            } else {
+                this.initMap();
+            }
+            this.map[0] = {'x': 0, 'y': 0, 'type': this.types.PLAYER, 'value': 'knight.png'};
+            this.calcBattleground();
+        },
+        methods: {
+            initMap: function () {
+                this.map['width'] = this.settings.viewSize.x_axis+1;
+                this.map['height'] = this.settings.viewSize.y_axis+1;
+                let id = 0;
+                for (let y = 0; y <= this.settings.viewSize.y_axis; y++) {
+                    for (let x = 0; x <= this.settings.viewSize.x_axis; x++) {
+                        this.map[id] = {'x': x, 'y': y, 'type': this.types.PASSABLE, 'value': 'ground.png'};
+                        id++;
+                    }
+                }
+            },
+            calcBattleground: function () {
+                this.viewBattleground = [];
+                let id = 0;
+                for (let y = 0; y <= this.settings.viewSize.y_axis; y++) {
+                    let columns = new Array(this.settings.viewSize.x_axis);
+                    this.viewBattleground.push(columns);
+                    for (let x = 0; x <= this.settings.viewSize.x_axis; x++) {
+                        let cell = this.map[id];
+                        let type = id === this.currentId ? this.types.SELECT : cell['type'];
+                        let value = cell['value'];
+
+                        this.viewBattleground[y][x] = {'id': id, 'type': type, 'value': value};
+                        id++;
+                    }
+                }
+            },
+            select: function (id) {
+                let target = this.map[id];
+                console.log('Target x:'+target['x']+' y:'+target['y']);
+                this.currentId = id;
+                this.calcBattleground();
+            },
+            addRock: function (id) {
+                this.currentId = id;
+                this.map[this.currentId]['type'] = this.types.ROCK;
+                this.map[this.currentId]['value'] = 'rock.png';
+                this.calcBattleground();
+            },
+            addMonster: function () {
+                this.map[this.currentId]['type'] = this.types.MONSTER;
+                this.map[this.currentId]['value'] = 'monster.png';
+                this.calcBattleground();
+            },
+            addTreasure: function () {
+                this.map[this.currentId]['type'] = this.types.TREASURE;
+                this.map[this.currentId]['value'] = 'chest.png';
+                this.calcBattleground();
+            },
+            save: function () {
+                localStorage.setItem('map', JSON.stringify(this.map));
+            },
+            clear: function () {
+                this.map = {};
+                localStorage.clear();
+                this.calcBattleground();
+            },
+            copyToClipboard: function () {
+                navigator.clipboard.writeText(JSON.stringify(this.map));
+            }
+        }
+    });
+</script>
+</body>
+</html>

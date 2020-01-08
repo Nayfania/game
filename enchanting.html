@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+          integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <!-- development version, includes helpful console warnings -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+</head>
+<body>
+<div class="container">
+    <div id="app">
+
+        <nav class="navbar navbar-expand-lg  navbar-dark bg-dark">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <span class="nav-link text-warning">Gold: {{ gold }}</span>
+                </li>
+            </ul>
+        </nav>
+
+        <img src="sword.jpeg" height="200">
+
+        <table class="table">
+            <tbody>
+            <tr>
+                <th scope="row">Name</th>
+                <td>{{ name }} +{{ level }}</td>
+            </tr>
+            <tr>
+                <th scope="row">Attack</th>
+                <td>{{ attack }}</td>
+            </tr>
+            <tr>
+                <th scope="row">Crit chance</th>
+                <td>{{ crit }}%</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <button v-on:click="upgrade" type="button" class="btn btn-success">Upgrade</button>
+        <div v-show="state=='progress'" class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                 aria-valuemin="0" aria-valuemax="100" :style="progressbar"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const sword = {
+        'name': 'Sword',
+        'levels': {
+            1: {'chance': 100, 'attack': 1, 'crit': 0, 'cost': 5},
+            2: {'chance': 100, 'attack': 2, 'crit': 0, 'cost': 10},
+            3: {'chance': 100, 'attack': 3, 'crit': 0, 'cost': 20},
+            4: {'chance': 100, 'attack': 5, 'crit': 0, 'cost': 30},
+            5: {'chance': 90, 'attack': 7, 'crit': 1, 'cost': 50},
+            6: {'chance': 80, 'attack': 10, 'crit': 1, 'cost': 75},
+            7: {'chance': 70, 'attack': 13, 'crit': 2, 'cost': 100},
+            8: {'chance': 60, 'attack': 17, 'crit': 2, 'cost': 130},
+            9: {'chance': 50, 'attack': 21, 'crit': 4, 'cost': 175},
+            10: {'chance': 40, 'attack': 27, 'crit': 5, 'cost': 250},
+            11: {'chance': 35, 'attack': 35, 'crit': 7, 'cost': 350},
+            12: {'chance': 30, 'attack': 50, 'crit': 9, 'cost': 500},
+            13: {'chance': 25, 'attack': 70, 'crit': 12, 'cost': 750},
+            14: {'chance': 20, 'attack': 100, 'crit': 15, 'cost': 1000},
+            15: {'chance': 15, 'attack': 150, 'crit': 20, 'cost': 1500},
+            16: {'chance': 10, 'attack': 250, 'crit': 25, 'cost': 2500}
+        }
+    };
+
+    var app = new Vue({
+        el: '#app',
+        data: {
+            name: sword['name'],
+            attack: sword['levels'][1]['attack'],
+            crit: sword['levels'][1]['crit'],
+            level: 1,
+            state: 'stop',
+            gold: 100,
+            progressbar: 'width: 1%',
+            chance: function (likelihood) {
+                return Math.random() * 100 < likelihood;
+            },
+            progress: function () {
+                console.log(123);
+                this.progressbar = 'width: 10%';
+            }
+        },
+        methods: {
+            upgrade: function () {
+                this.state = 'progress';
+                setInterval(this.progress.bind(this), 1000);
+                if (this.level === 16) {
+                    return;
+                }
+                if (this.gold >= sword['levels'][this.level]['cost']) {
+                    this.gold = this.gold - sword['levels'][this.level]['cost'];
+                    if (this.chance(sword['levels'][this.level]['chance'])) {
+                        this.level = this.level + 1;
+                        this.attack = sword['levels'][this.level]['attack'];
+                        this.crit = sword['levels'][this.level]['crit'];
+                    }
+                }
+                // this.state = 'stop';
+            }
+        }
+    })
+</script>
+</body>
+</html>
