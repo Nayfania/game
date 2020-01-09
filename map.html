@@ -27,6 +27,10 @@
         .color_0 {
             background: #f00;
         }
+
+        .color_6 { /* for path */
+            background: greenyellow;
+        }
     </style>
 </head>
 <body>
@@ -56,76 +60,106 @@
 </div>
 
 <script src="js/pathFinding.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+<script src="js/vue.js"></script>
 <script src="levels.js"></script>
 <script>
     var app = new Vue({
         el: '#app',
         data: {
-            settings: {
-                viewSize: {x_axis: 19, y_axis: 14},
-            },
-            types: {SELECT: 0, PASSABLE: 1, ROCK: 2, MONSTER: 3, TREASURE: 4, PLAYER: 5},
+            height: 0,
+            width: 0,
+            types: {SELECT: 0, PASSABLE: 1, ROCK: 2, MONSTER: 3, TREASURE: 4, PLAYER: 5, PATH: 6},
             viewBattleground: [],
-            battlegroundInitialized: false,
             map: level1,
             selectId: 0,
-            playerPositionId: 0
+            playerPositionId: 0,
+            path: []
         },
         created: function () {
-            this.map[0]['type'] = this.types.PLAYER;
-            this.map[0]['value'] = 'knight.png';
-            this.settings.viewSize.y_axis = this.map['height'] - 1;
-            this.settings.viewSize.x_axis = this.map['width'] - 1;
-            this.calcBattleground();
+            this.height = this.map['height'];
+            this.width = this.map['width'];
+
+            let id = 0;
+            for (let y = 0; y <= this.height - 1; y++) {
+                let columns = new Array(this.width - 1);
+                Vue.set(this.viewBattleground, y, columns);
+                for (let x = 0; x <= this.width - 1; x++) {
+                    let cell = this.map[id];
+                    this.set(y, x, {'id': id, 'type': cell['type'], 'value': cell['value']});
+                    id++;
+                }
+            }
+
+            this.set(0, 0, {'id': 0, 'type': this.types.PLAYER, 'value': 'knight.png'});
         },
         methods: {
-            calcBattleground: function () {
-                // this.viewBattleground = [];
-                let id = 0;
-                for (let y = 0; y <= this.settings.viewSize.y_axis; y++) {
-                    let columns = new Array(this.settings.viewSize.x_axis);
-                    if(!this.battlegroundInitialized) {
-                        this.viewBattleground.push(columns);
-                    }
-                    for (let x = 0; x <= this.settings.viewSize.x_axis; x++) {
-                        let cell = this.map[id];
-                        let type = id === this.selectId ? this.types.SELECT : cell['type'];
-                        let value = cell['value'];
-
-                        this.viewBattleground[y][x] = {'id': id, 'type': type, 'value': value};
-                        id++;
-                    }
-                }
-                this.battlegroundInitialized = true;
+            set: function (y, x, value) {
+                Vue.set(this.viewBattleground[y], x, value);
+            },
+            setType: function (y, x, type) {
+                Vue.set(this.viewBattleground[y][x], 'type', type);
+            },
+            setValue: function (y, x, value) {
+                Vue.set(this.viewBattleground[y][x], 'value', value);
+            },
+            getId: function (y, x) {
+                return y * this.width + x;
+            },
+            getY: function (id) {
+                return Math.floor(id / this.height)
+            },
+            getX: function (id) {
+                return id % this.height;
             },
             select: function (id) {
+                this.cleanPath();
+
+                this.setType(this.getY(this.selectId), this.getX(this.selectId), this.types.PASSABLE);
                 this.selectId = id;
-                this.calcBattleground();
-            },
-            move: function (id) {
-                if (this.map[id].type === this.types.PASSABLE && this.checkPath(id)) {
-                    this.map[this.playerPositionId]['type'] = this.types.PASSABLE;
-                    this.map[this.playerPositionId]['value'] = 'ground.png';
-                    this.playerPositionId = id;
-                    this.map[id]['type'] = this.types.PLAYER;
-                    this.map[id]['value'] = 'knight.png';
-                    this.calcBattleground();
+                this.setType(this.getY(id), this.getX(id), this.types.SELECT);
+
+                this.generatePath(id);
+                if (this.path.length > 0) {
+                    for (let i = 0; i < this.path.length; i++) {
+                        let x = this.path[i][0];
+                        let y = this.path[i][1];
+                        this.setType(y, x, this.types.PATH);
+                    }
                 }
             },
-            checkPath: function (id) {
+            move: function (id) {
+                this.cleanPath();
+                this.generatePath(id);
+                if (this.path.length > 0) {
+                    let y = this.getY(this.playerPositionId);
+                    let x = this.getX(this.playerPositionId);
+                    this.set(y, x, {'id': this.playerPositionId, 'type': this.types.PASSABLE, 'value': 'ground.png'});
+
+                    this.playerPositionId = id;
+
+                    y = this.getY(id);
+                    x = this.getX(id);
+                    this.set(y, x, {'id': id, 'type': this.types.PLAYER, 'value': 'knight.png'});
+                }
+            },
+            generatePath: function (id) {
                 let player = this.map[this.playerPositionId];
-                console.log('Player x:' + player['x'] + ' y:' + player['y']);
+                // console.log('Player x:' + player['x'] + ' y:' + player['y']);
                 let target = this.map[id];
-                console.log('Target x:' + target['x'] + ' y:' + target['y']);
+                // console.log('Target x:' + target['x'] + ' y:' + target['y']);
 
                 let matrix = [];
-                for (var y = 0; y < this.map['height']; y++) {
-                    let columns = new Array(this.map['width']);
+                for (let y = 0; y < this.height; y++) {
+                    let columns = new Array(this.width);
                     matrix.push(columns);
-                    for (var x = 0; x < this.map['width']; x++) {
+                    for (var x = 0; x < this.width; x++) {
                         let type = this.viewBattleground[y][x].type;
-                        if (type === this.types.PASSABLE || type === this.types.PLAYER || type === this.types.SELECT) {
+                        if (
+                            type === this.types.PASSABLE ||
+                            type === this.types.PLAYER ||
+                            type === this.types.SELECT ||
+                            type === this.types.PATH
+                        ) {
                             matrix[y][x] = 0;
                         } else {
                             matrix[y][x] = 1;
@@ -133,17 +167,18 @@
                     }
                 }
 
-                var finder = new AStarFinder(matrix);
-                var path = finder.findPath(player['x'], player['y'], target['x'], target['y']);
-                console.log(path);
-
-                for (var i = 0; i < path.length; i++) {
-                    x = path[i][0];
-                    y = path[i][1];
-                    this.viewBattleground[y][x].type = this.types.SELECT;
+                let finder = new AStarFinder(matrix);
+                this.path = finder.findPath(player['x'], player['y'], target['x'], target['y']);
+                // console.log('Path:' + path);
+            },
+            cleanPath: function () {
+                if (this.path.length > 0) {
+                    for (let i = 0; i < this.path.length; i++) {
+                        let x = this.path[i][0];
+                        let y = this.path[i][1];
+                        this.setType(y, x, this.types.PASSABLE);
+                    }
                 }
-
-                return path.length > 0;
             }
         }
     });
